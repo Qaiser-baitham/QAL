@@ -1,8 +1,8 @@
-# Memristor-Aware PyTorch Training Framework
+# Memristor-Aware Neural Network Training Framework
 
 This project is a generalized research workflow for training ideal and memristor-aware neural networks from raw LTP/LTD device measurements. It is designed to produce publication-style outputs such as accuracy/loss versus epoch plots, confusion matrices, device conductance curves, Excel tables, checkpoints, and a combined `training_history.png` similar to the reference training-history figure.
 
-The goal is not to exactly reproduce one paper figure. The paper/manuals are used as guidance for the expected workflow: extract device conductance behavior, choose a dataset/model/epoch count, run an ideal CNN and a memristor-effect evaluation, then export clean graphs for comparison.
+The goal is not to exactly reproduce one paper figure. The paper/manuals are used as guidance for the expected workflow: extract device conductance behavior, choose a dataset/model/epoch count, run an ideal neural network and a memristor-effect evaluation, then export clean graphs for comparison.
 
 ## Main Workflow
 
