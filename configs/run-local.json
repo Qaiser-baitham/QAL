@@ -1,0 +1,33 @@
+{
+  "seed": 42,
+  "batch_size": 128,
+  "learning_rate": 0.001,
+  "weight_decay": 0.0001,
+  "num_workers": 0,
+  "dual_strategy": "ideal_then_hardware",
+  "show_progress": true,
+  "target_accuracy": 0.95,
+  "lr_scheduler": {
+    "type": "reduce_on_plateau",
+    "factor": 0.5,
+    "patience": 4,
+    "min_lr": 0.00001
+  },
+  "data_root": "datasets",
+  "raw_memristor_data": "data/raw",
+  "outputs_root": "outputs",
+  "hardware": {
+    "weight_bits": 8,
+    "activation_bits": 8,
+    "adc_bits": 6,
+    "dac_bits": 8,
+    "read_noise": 0.02,
+    "cycle_variation_scale": 0.1,
+    "stuck_at_zero_rate": 0.0,
+    "stuck_at_one_rate": 0.0,
+    "energy_per_mac_pj": 0.15,
+    "adc_energy_per_conversion_pj": 0.08,
+    "base_latency_ns": 5.0,
+    "sub_array": [128, 128]
+  }
+}

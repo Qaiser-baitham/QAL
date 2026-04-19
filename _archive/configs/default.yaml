@@ -1,0 +1,61 @@
+# ======================================================
+# Default Configuration — NeuroSim-style CIM Framework
+# ======================================================
+project:
+  name: "iMC-NeuroSim"
+  seed: 42
+  device: "auto"          # auto | cuda | cpu
+
+paths:
+  raw_memristor_dir: "data/raw_memristor"
+  processed_dir: "data/processed"
+  datasets_dir: "datasets"
+  outputs_dir: "outputs"
+  plots_dir: "outputs/plots"
+  excel_dir: "outputs/excel"
+  logs_dir: "outputs/logs"
+
+# -------- Device modeling --------
+device_model:
+  num_states: 32            # quantization levels (conductance)
+  g_on_uS: 50.0             # ON conductance (microsiemens) — overwritten if real data
+  g_off_uS: 0.5             # OFF conductance (microsiemens)
+  sigma_device: 0.05        # device-to-device variation (relative)
+  sigma_cycle: 0.03         # cycle-to-cycle noise (relative)
+  drift_alpha: 0.01         # conductance drift exponent
+  nonlinearity_ltp: 1.5     # NeuroSim A_p
+  nonlinearity_ltd: -1.5    # NeuroSim A_d
+
+# -------- Dataset --------
+dataset:
+  name: "MNIST"             # MNIST | FMNIST | CIFAR10 | CIFAR100 | CUSTOM
+  batch_size: 128
+  num_workers: 2
+
+# -------- Training --------
+training:
+  mode: "dual"              # ideal | hardware_aware | dual
+  epochs: 80
+  lr: 1.0e-3
+  weight_decay: 5.0e-4
+  optimizer: "adam"         # adam | sgd
+  weight_bits: 4            # quantization bits for CIM weights
+  act_bits: 8               # activation quantization
+  adc_bits: 6               # ADC resolution (hardware_aware only)
+  noise_std: 0.03           # runtime noise (hardware_aware only)
+
+# -------- Hardware simulation --------
+hardware:
+  v_read: 0.2               # read voltage (V)
+  c_line_fF: 1.0            # per cell line capacitance (fF)
+  r_wire_ohm: 2.0           # wire resistance per cell (ohm)
+  cell_area_um2: 0.01       # cell area (um^2)
+  adc_energy_pJ: 2.0        # ADC energy per sample (pJ)
+  clock_period_ns: 5.0      # system clock period (ns)
+
+# -------- Design Space Exploration --------
+dse:
+  enable: true
+  weight_bits_list: [2, 4, 6, 8]
+  noise_list: [0.0, 0.02, 0.05, 0.1]
+  states_list: [8, 16, 32, 64]
