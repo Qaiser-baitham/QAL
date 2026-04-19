@@ -66,6 +66,32 @@ Everything else is selected automatically from sensible research defaults:
 
 Advanced overrides are still available through non-interactive CLI flags.
 
+## Supported Datasets and Models
+
+The CLI validates dataset/model compatibility before training starts.
+
+| Dataset | Compatible models |
+|---|---|
+| `MNIST`, `KMNIST` | `MLP`, `ANN`, `CNN`, `LeNet`, `SNN` |
+| `FMNIST` | `MLP`, `ANN`, `CNN`, `DeepCNN`, `LeNet`, `SNN` |
+| `EMNIST` | `MLP`, `ANN`, `CNN`, `DeepCNN`, `LeNet` |
+| `CIFAR10`, `CIFAR100` | `CNN`, `DeepCNN`, `VGGSmall`, `VGG11`, `VGG16`, `ResNet18`, `ResNet34` |
+| `SVHN` | `CNN`, `DeepCNN`, `VGGSmall`, `VGG11`, `ResNet18` |
+| `TinyImageNet` | `DeepCNN`, `VGGSmall`, `VGG11`, `ResNet18`, `ResNet34` |
+
+Dataset-aware transforms are selected automatically. CIFAR/TinyImageNet runs use augmentation such as crop, flip, and color jitter; digit datasets avoid transforms that would change label identity.
+
+## Quick Decision Table
+
+| Goal | Suggested run |
+|---|---|
+| Full pipeline sanity check | `FMNIST` + `CNN` + 3 epochs, `--mode dual` |
+| Strong FMNIST result | `FMNIST` + `DeepCNN` + 40 epochs |
+| CIFAR-10 comparison | `CIFAR10` + `ResNet18` + 80 epochs |
+| Harder 100-class run | `CIFAR100` + `ResNet34` + 100 epochs |
+| Hardware degradation study | Start with defaults, then vary `--read-noise`, `--weight-bits`, and `--adc-bits` |
+| Per-class degradation analysis | Use `class_wise_comparison.png` and `confusion_matrix_diff_ideal_vs_hardware.png` |
+
 ## Non-Interactive Examples
 
 Quick FMNIST smoke run:
@@ -235,6 +261,18 @@ Resume examples:
 python main.py --non-interactive --dataset fmnist --model CNN --mode dual --epochs 50 --resume resume_latest
 python main.py --non-interactive --dataset fmnist --model CNN --mode dual --epochs 50 --resume resume_best
 ```
+
+## Full Usage Guide
+
+For a complete A-to-Z operating guide, see `README_USAGE.md`. It covers:
+
+- every supported dataset and model pair
+- auto-selected recipes and training hyperparameters
+- all calculated metrics
+- every generated plot category
+- output folder layout
+- accuracy tips and recommended experiment choices
+- resume and checkpoint behavior
 
 ## Scope
 
