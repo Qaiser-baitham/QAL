@@ -1,0 +1,26 @@
+name: Feature request
+description: Suggest a dataset, model, device effect, metric, or export improvement.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or research need
+      description: What limitation should this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the expected behavior or output.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Papers, datasets, model names, or implementation notes.
+    validations:
+      required: false

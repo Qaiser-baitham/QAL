@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use this framework in academic work, please cite it using this metadata."
+title: "Memristor-Aware Neural Network Training Framework"
+type: software
+authors:
+  - family-names: Abbas
+    given-names: Qaiser
+repository-code: "https://github.com/Abbas-Qaiser/Memristor-Aware-Neural-Network-Framework"
+url: "https://github.com/Abbas-Qaiser/Memristor-Aware-Neural-Network-Framework"
+abstract: "A PyTorch research workflow for ideal and memristor-aware neural network training using measured LTP/LTD device behavior."
+keywords:
+  - memristor
+  - in-memory-computing
+  - neural-networks
+  - pytorch
+  - hardware-aware-training
+license: MIT
+date-released: 2026-04-20
