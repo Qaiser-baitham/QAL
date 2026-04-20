@@ -6,7 +6,7 @@ The goal is not to exactly reproduce one paper figure. The paper/manuals are use
 
 ## Main Workflow
 
-1. Read raw device files from `data/raw` or a path selected by the user.
+1. Read raw device files from `data/raw_data` or a path selected by the user.
 2. Detect resistance, conductance, current, voltage, and pulse columns from Excel/CSV/TXT tables.
 3. Convert resistance to conductance when the direct conductance column is missing or unnamed.
 4. Classify traces as LTP, LTD, IV, or unknown.
@@ -62,7 +62,7 @@ Everything else is selected automatically from sensible research defaults:
 - early stopping patience
 - hardware precision/noise settings
 - live progress display
-- raw data path `data/raw`
+- raw data path `data/raw_data`
 
 Advanced overrides are still available through non-interactive CLI flags.
 
@@ -97,13 +97,13 @@ Dataset-aware transforms are selected automatically. CIFAR/TinyImageNet runs use
 Quick FMNIST smoke run:
 
 ```powershell
-python main.py --config configs/run-local.json --non-interactive --dataset fmnist --model CNN --mode dual --epochs 1 --batch-size 512 --raw-data data/raw --resume fresh
+python main.py --config configs/run-local.json --non-interactive --dataset fmnist --model CNN --mode dual --epochs 1 --batch-size 512 --raw-data data/raw_data --resume fresh
 ```
 
 Paper-style CIFAR-10 direction with six-convolution `DeepCNN`:
 
 ```powershell
-python main.py --config configs/run-local.json --non-interactive --dataset cifar10 --model DeepCNN --mode dual --epochs 200 --batch-size 128 --raw-data data/raw --resume fresh
+python main.py --config configs/run-local.json --non-interactive --dataset cifar10 --model DeepCNN --mode dual --epochs 200 --batch-size 128 --raw-data data/raw_data --resume fresh
 ```
 
 More severe hardware non-ideality:
@@ -224,7 +224,7 @@ The runtime graph is not opened as a GUI window by default because Windows and V
 
 ## Current Raw Data Notes
 
-For the provided `data/raw/LTP.xlsx` and `data/raw/LTD.xlsx`, the parser now detects the unnamed conductance column as `1 / RESISTANCE`. The current extracted device model is approximately:
+For the provided `data/raw_data/LTP.xlsx` and `data/raw_data/LTD.xlsx`, the parser now detects the unnamed conductance column as `1 / RESISTANCE`. The current extracted device model is approximately:
 
 ```text
 g_on      = 0.008817 S

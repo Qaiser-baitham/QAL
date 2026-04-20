@@ -5,7 +5,7 @@ REM  Ag/GeTe/Pt Memristor Compute-in-Memory Framework
 REM =================================================================
 REM
 REM  This script runs the complete pipeline:
-REM    1. Device characterization (auto from data/raw/*.xlsx)
+REM    1. Device characterization (auto from data/raw_data/*.xlsx)
 REM    2. Neural network training (ideal + hardware-aware)
 REM    3. Hardware metrics estimation (C*V^2 physics model)
 REM    4. Design space exploration (precision/noise sweeps)

@@ -9,7 +9,7 @@ This file is a practical, end-user reference for the iMC (in-memory-compute) tra
 The framework trains a neural network twice on the same dataset:
 
 1. An **ideal** software-floating-point run (no hardware effects).
-2. A **hardware-aware (memristor)** run that applies weight quantization, conductance-range mapping, read noise, cycle variation, stuck-at faults, and ADC quantization of logits - parameters derived from the raw Ag/GeTe/Pt memristor measurements in `data/raw`.
+2. A **hardware-aware (memristor)** run that applies weight quantization, conductance-range mapping, read noise, cycle variation, stuck-at faults, and ADC quantization of logits - parameters derived from the raw Ag/GeTe/Pt memristor measurements in `data/raw_data`.
 
 The two runs are then compared, and the framework exports plots, Excel tables, checkpoints, and Markdown reports that describe training behaviour, hardware impact, per-class accuracy, energy/latency, and device characterization.
 

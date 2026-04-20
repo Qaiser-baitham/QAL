@@ -66,7 +66,7 @@ class Exporter:
         ax.set_xlabel("Pulse number")
         ax.set_ylabel("Conductance (mS)")
         ax.grid(True, linestyle="--", alpha=0.3)
-        ax.legend(fontsize=8)
+        _safe_legend(ax, fontsize=8)
 
         # Panel 2: LTD raw + smoothed + fitted
         ax = axes[0, 1]
@@ -85,7 +85,7 @@ class Exporter:
         ax.set_xlabel("Pulse number")
         ax.set_ylabel("Conductance (mS)")
         ax.grid(True, linestyle="--", alpha=0.3)
-        ax.legend(fontsize=8)
+        _safe_legend(ax, fontsize=8)
 
         # Panel 3: Normalized weight update (LTP + LTD overlay)
         ax = axes[0, 2]
@@ -103,7 +103,7 @@ class Exporter:
         ax.set_xlabel("Normalized pulse")
         ax.set_ylabel("Normalized conductance")
         ax.grid(True, linestyle="--", alpha=0.3)
-        ax.legend(fontsize=8)
+        _safe_legend(ax, fontsize=8)
 
         # Panel 4: Conductance state distribution with error bars
         ax = axes[1, 0]
@@ -115,7 +115,7 @@ class Exporter:
         ax.set_xlabel("State index")
         ax.set_ylabel("Conductance (mS)")
         ax.grid(True, linestyle="--", alpha=0.3, axis="y")
-        ax.legend(fontsize=8)
+        _safe_legend(ax, fontsize=8)
 
         # Panel 5: ON/OFF ratio and dynamic range annotation
         ax = axes[1, 1]
@@ -1241,9 +1241,20 @@ def _markevery(values: list) -> int:
 
 
 def _style_legend(ax) -> None:
+    handles, labels = ax.get_legend_handles_labels()
+    if not handles:
+        return
     legend = ax.legend(loc="best", frameon=True, fontsize=8, handlelength=2.6, borderpad=0.7, labelspacing=0.5)
     if legend is not None:
         legend.get_frame().set_alpha(0.92)
+
+
+def _safe_legend(ax, **kwargs) -> None:
+    """Call ax.legend(**kwargs) only if there are labeled artists; avoids matplotlib warning."""
+    handles, labels = ax.get_legend_handles_labels()
+    if not handles:
+        return
+    ax.legend(**kwargs)
 
 
 def _legend_label(label: str, values, ylabel: str) -> str:

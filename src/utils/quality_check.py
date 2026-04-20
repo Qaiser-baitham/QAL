@@ -20,7 +20,7 @@ def run_quality_check(root: Path | str = ".") -> dict:
 
     checks: list[dict] = []
 
-    raw = RawMemristorAnalyzer(root / "data" / "raw").analyze()
+    raw = RawMemristorAnalyzer(root / "data" / "raw_data").analyze()
     device = DeviceModelExtractor().extract(raw)
     _add(checks, "raw traces detected", len(raw.traces) >= 2, f"{len(raw.traces)} trace(s)")
     _add(checks, "device on/off ratio valid", device.on_off_ratio > 1.0, f"{device.on_off_ratio:.4g}")

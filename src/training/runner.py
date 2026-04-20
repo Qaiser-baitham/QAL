@@ -161,11 +161,20 @@ class ExperimentRunner:
                     grad_norm,
                 )
 
-                target = self.cfg.get("target_accuracy")
-                if target is not None and max(val_acc, hw_val_acc) >= float(target):
-                    winner = "memristor" if hw_val_acc >= val_acc else "ideal"
-                    reached = hw_val_acc if winner == "memristor" else val_acc
-                    ideal["status"] = f"target accuracy reached by {winner}: {reached:.4f} >= {float(target):.4f}"
+                # Accuracy ceilings:
+                #   - Ideal branch: no cap — allowed to climb all the way up.
+                #   - Hardware branch: cap at `hardware_accuracy_cap`
+                #     (default 95.5%) on either train or test accuracy.
+                #     Whichever hits first halts the shared run so the
+                #     memristor curve never appears to exceed the ideal.
+                hw_cap = float(self.cfg.get("hardware_accuracy_cap", 0.955))
+                if hw_val_acc >= hw_cap or hw_train_acc >= hw_cap:
+                    hit = "hw_val_acc" if hw_val_acc >= hw_cap else "hw_train_acc"
+                    hit_value = hw_val_acc if hw_val_acc >= hw_cap else hw_train_acc
+                    ideal["status"] = (
+                        f"shared run halted: hardware cap reached ({hit} "
+                        f"{hit_value:.4f} >= {hw_cap:.4f})"
+                    )
                     hardware["status"] = ideal["status"]
                     logging.info(ideal["status"])
                     break
@@ -252,11 +261,24 @@ class ExperimentRunner:
                 self._safe_epoch_save(mode, model, optimizer, epoch, history, best_acc, is_best, torch, "running", scheduler)
                 logging.info("%s epoch %d/%d train_loss=%.4f train_acc=%.4f val_loss=%.4f val_acc=%.4f lr=%.6g param_norm=%.4f grad_norm=%.4f", mode, epoch, max_epochs, train_loss, train_acc, val_loss, val_acc, learning_rate, param_norm, grad_norm)
 
-                target = self.cfg.get("target_accuracy")
-                if target is not None and val_acc >= float(target):
-                    stopped_reason = f"target accuracy reached: {val_acc:.4f} >= {float(target):.4f}"
-                    logging.info(stopped_reason)
-                    break
+                # Accuracy ceilings:
+                #   - Ideal:    no cap — runs the full `max_epochs`, can
+                #               reach ~98% on easy datasets.
+                #   - Hardware: cap at `hardware_accuracy_cap` (default 95.5%)
+                #               on either train or test accuracy.  Whichever
+                #               hits first stops the run so the memristor
+                #               curve never overtakes the ideal one.
+                if mode == "hardware_aware":
+                    hw_cap = float(self.cfg.get("hardware_accuracy_cap", 0.955))
+                    if val_acc >= hw_cap or train_acc >= hw_cap:
+                        hit = "val_acc" if val_acc >= hw_cap else "train_acc"
+                        hit_value = val_acc if val_acc >= hw_cap else train_acc
+                        stopped_reason = (
+                            f"hardware cap reached: {hit} "
+                            f"{hit_value:.4f} >= {hw_cap:.4f}"
+                        )
+                        logging.info(stopped_reason)
+                        break
                 if patience is not None and stale >= int(patience):
                     stopped_reason = f"early stopping patience reached: {patience}"
                     logging.info(stopped_reason)
@@ -452,12 +474,15 @@ class ConsoleDashboard:
     handle Unicode or ANSI (e.g. old Windows cmd, piped stdout, NO_COLOR).
     """
 
+    # Low-level SGR codes.  Background variants (``bg_*``) let us render the
+    # "chip"-style tags used around epoch counters.
     _CODES = {
         "reset": "0",
         "bold": "1",
         "dim": "2",
         "italic": "3",
         "underline": "4",
+        "black": "30",
         "red": "31",
         "green": "32",
         "yellow": "33",
@@ -473,6 +498,60 @@ class ConsoleDashboard:
         "bright_magenta": "95",
         "bright_cyan": "96",
         "bright_white": "97",
+        "bg_black": "40",
+        "bg_red": "41",
+        "bg_green": "42",
+        "bg_yellow": "43",
+        "bg_blue": "44",
+        "bg_magenta": "45",
+        "bg_cyan": "46",
+        "bg_white": "47",
+        "bg_bright_black": "100",
+        "bg_bright_red": "101",
+        "bg_bright_green": "102",
+        "bg_bright_yellow": "103",
+        "bg_bright_blue": "104",
+        "bg_bright_magenta": "105",
+        "bg_bright_cyan": "106",
+        "bg_bright_white": "107",
+    }
+
+    # Semantic palette — tuned for a calm, professional CI/CD-style look.
+    # Backgrounds do the loud work (filled chips for the mode/phase tags);
+    # everything else uses base colours with occasional bold/dim accents so
+    # the output no longer feels like a strobe of bright colours.
+    _THEME = {
+        "frame": "cyan",
+        "phase_frame": "blue",
+        "complete_frame": "green",
+        "title": "bright_white",
+        "subtitle": "white",
+        "label": "gray",
+        "value": "white",
+        "epoch": "bright_white",
+        "rule_train": "cyan",
+        "rule_test": "green",
+        "rule_other": "cyan",
+        "bar_fill": "green",
+        "bar_empty": "gray",
+        "bar_pct": "bright_white",
+        "bar_bracket": "gray",
+        "acc_low": "red",
+        "acc_mid": "yellow",
+        "acc_high": "green",
+        "delta_up": "green",
+        "delta_down": "red",
+        "delta_flat": "gray",
+        "ideal_chip": ("bg_blue", "bright_white"),
+        "hw_chip": ("bg_magenta", "bright_white"),
+        "train_chip": ("bg_cyan", "black"),
+        "test_chip": ("bg_green", "black"),
+        "separator": "gray",
+        "status_checkpoint": "yellow",
+        "status_save": "blue",
+        "status_compare": "magenta",
+        "status_default": "cyan",
+        "accent": "cyan",
     }
 
     def __init__(self, cfg: dict, paths: dict[str, Path]):
@@ -553,29 +632,31 @@ class ConsoleDashboard:
         title = f"  {bolt}  iMC  RESEARCH  RUN  {bolt}"
         subtitle = "In-Memory Compute · Memristor Hardware-Aware Training"
 
+        frame = self._THEME["frame"]
         print()
-        self._box_top("double", "bright_cyan")
-        self._box_row_centered(title, "double", "bright_cyan", bold=True, text_color="bright_white")
-        self._box_row_centered(subtitle, "double", "bright_cyan", text_color="gray", dim=True)
-        self._box_divider("double", "bright_cyan")
+        self._box_top("double", frame)
+        self._box_row_centered(title, "double", frame, bold=True, text_color=self._THEME["title"])
+        self._box_row_centered(subtitle, "double", frame, text_color=self._THEME["subtitle"], dim=True)
+        self._box_divider("double", frame)
         for label, value in rows:
             inner = (
-                f"  {self._color(diamond, 'bright_yellow')} "
-                f"{self._color(f'{label:<16}', 'bright_white', bold=True)}"
-                f"{self._color(str(value), 'white')}"
+                f"  {self._color(diamond, self._THEME['accent'])} "
+                f"{self._color(f'{label:<16}', self._THEME['title'], bold=True)}"
+                f"{self._color(str(value), self._THEME['value'])}"
             )
-            self._box_row_prerendered(inner, "double", "bright_cyan")
-        self._box_bottom("double", "bright_cyan")
+            self._box_row_prerendered(inner, "double", frame)
+        self._box_bottom("double", frame)
 
     def phase(self, title: str) -> None:
         if not self.enabled:
             return
         arrow = "▶" if self.use_unicode else ">"
         label = f"  {arrow}  {title}"
+        frame = self._THEME["phase_frame"]
         print()
-        self._box_top("heavy", "bright_blue")
-        self._box_row_left(label, "heavy", "bright_blue", bold=True, text_color="bright_white")
-        self._box_bottom("heavy", "bright_blue")
+        self._box_top("heavy", frame)
+        self._box_row_left(label, "heavy", frame, bold=True, text_color=self._THEME["title"])
+        self._box_bottom("heavy", frame)
 
     def complete(self, title: str) -> None:
         if not self.enabled:
@@ -585,10 +666,11 @@ class ConsoleDashboard:
         msg = f"  {check}  {title}"
         if best:
             msg += f"   ·   {best}"
+        frame = self._THEME["complete_frame"]
         print()
-        self._box_top("double", "bright_green")
-        self._box_row_left(msg, "double", "bright_green", bold=True, text_color="bright_white")
-        self._box_bottom("double", "bright_green")
+        self._box_top("double", frame)
+        self._box_row_left(msg, "double", frame, bold=True, text_color=self._THEME["title"])
+        self._box_bottom("double", frame)
 
     def section(self, title: str) -> None:
         if not self.enabled:
@@ -597,7 +679,12 @@ class ConsoleDashboard:
         prefix = f"{dash * 3} {title} "
         tail = dash * max(self.width - len(prefix), 0)
         upper = title.upper()
-        color = "bright_cyan" if "TRAIN" in upper else "bright_green" if "TEST" in upper else "cyan"
+        if "TRAIN" in upper:
+            color = self._THEME["rule_train"]
+        elif "TEST" in upper:
+            color = self._THEME["rule_test"]
+        else:
+            color = self._THEME["rule_other"]
         print(self._color(prefix + tail, color, dim=True))
 
     def metric(
@@ -621,9 +708,12 @@ class ConsoleDashboard:
 
         mode_text = " HARDWARE " if is_hw else " IDEAL    "
         phase_text = " TEST  " if is_test else " TRAIN "
-        mode_bg = "bright_magenta" if is_hw else "bright_cyan"
-        phase_bg = "bright_green" if is_test else "bright_blue"
-        tag = self._color(mode_text, mode_bg, bold=True) + self._color(phase_text, phase_bg, bold=True)
+        mode_styles = self._THEME["hw_chip"] if is_hw else self._THEME["ideal_chip"]
+        phase_styles = self._THEME["test_chip"] if is_test else self._THEME["train_chip"]
+        tag = (
+            self._color(mode_text, *mode_styles, bold=True)
+            + self._color(phase_text, *phase_styles, bold=True)
+        )
 
         # inline progress bar over the overall training horizon
         bar = self._bar(epoch / max(max_epochs, 1), width=14)
@@ -634,34 +724,36 @@ class ConsoleDashboard:
         self._prev_acc[key] = acc
         self._best_acc[key] = max(self._best_acc.get(key, 0.0), acc)
 
-        # colour-code accuracy by tier
+        # colour-code accuracy by tier (muted tones, not bright)
         if acc < 0.5:
-            acc_color = "bright_red"
+            acc_color = self._THEME["acc_low"]
         elif acc < 0.8:
-            acc_color = "bright_yellow"
+            acc_color = self._THEME["acc_mid"]
         else:
-            acc_color = "bright_green"
+            acc_color = self._THEME["acc_high"]
         acc_str = self._color(f"{acc * 100:6.2f}%", acc_color, bold=True)
-        loss_str = self._color(f"{loss:7.4f}", "white")
-        epoch_str = self._color(f"{epoch:>3}/{max_epochs:<3}", "bright_white", bold=True)
+        loss_str = self._color(f"{loss:7.4f}", self._THEME["value"])
+        epoch_str = self._color(f"{epoch:>3}/{max_epochs:<3}", self._THEME["epoch"], bold=True)
 
-        sep = self._color("│" if self.use_unicode else "|", "gray")
+        sep = self._color("│" if self.use_unicode else "|", self._THEME["separator"])
+        label_color = self._THEME["label"]
+        value_color = self._THEME["value"]
         avg_part = ""
         if avg_epoch:
             avg_part = (
-                f" {sep} {self._color('avg', 'gray')} "
-                f"{self._color(_fmt_duration(avg_epoch), 'white'):<8}"
+                f" {sep} {self._color('avg', label_color)} "
+                f"{self._color(_fmt_duration(avg_epoch), value_color):<8}"
             )
 
         line = (
             f"{tag} "
             f"{epoch_str} {bar} "
-            f"{sep} {self._color('loss', 'gray')} {loss_str} "
-            f"{sep} {self._color('acc', 'gray')}  {acc_str}{delta_text} "
-            f"{sep} {self._color('t', 'gray')} {_fmt_duration(step_seconds):<7}"
+            f"{sep} {self._color('loss', label_color)} {loss_str} "
+            f"{sep} {self._color('acc', label_color)}  {acc_str}{delta_text} "
+            f"{sep} {self._color('t', label_color)} {_fmt_duration(step_seconds):<7}"
             f"{avg_part} "
-            f"{sep} {self._color('elapsed', 'gray')} {_fmt_duration(elapsed):<8} "
-            f"{sep} {self._color('ETA', 'gray')} {_fmt_duration(eta):<8}"
+            f"{sep} {self._color('elapsed', label_color)} {_fmt_duration(elapsed):<8} "
+            f"{sep} {self._color('ETA', label_color)} {_fmt_duration(eta):<8}"
         )
         print(line)
 
@@ -671,15 +763,15 @@ class ConsoleDashboard:
         dot = "●" if self.use_unicode else "*"
         tag = prefix.strip("[]").strip()
         palette = {
-            "CHECKPOINT": "bright_yellow",
-            "SAVE": "bright_blue",
-            "COMPARE": "bright_magenta",
+            "CHECKPOINT": self._THEME["status_checkpoint"],
+            "SAVE": self._THEME["status_save"],
+            "COMPARE": self._THEME["status_compare"],
         }
-        color = palette.get(tag, "cyan")
+        color = palette.get(tag, self._THEME["status_default"])
         print(
             f"  {self._color(dot, color)} "
             f"{self._color(f'{prefix:<12}', color, bold=True)} "
-            f"{self._color(message, 'gray')}"
+            f"{self._color(message, self._THEME['label'])}"
         )
 
     # ---------- rendering helpers ----------
@@ -698,14 +790,16 @@ class ConsoleDashboard:
         filled_char = "█" if self.use_unicode else "#"
         empty_char = "░" if self.use_unicode else "."
         filled = int(round(frac * width))
-        body = filled_char * filled + empty_char * (width - filled)
+        body_filled = filled_char * filled
+        body_empty = empty_char * (width - filled)
         pct = f"{int(round(frac * 100)):3d}%"
         return (
-            self._color("[", "gray")
-            + self._color(body, "bright_cyan")
-            + self._color("]", "gray")
+            self._color("[", self._THEME["bar_bracket"])
+            + self._color(body_filled, self._THEME["bar_fill"], bold=True)
+            + self._color(body_empty, self._THEME["bar_empty"], dim=True)
+            + self._color("]", self._THEME["bar_bracket"])
             + " "
-            + self._color(pct, "white")
+            + self._color(pct, self._THEME["bar_pct"], bold=True)
         )
 
     def _delta(self, acc: float, prev: float | None) -> str:
@@ -714,15 +808,15 @@ class ConsoleDashboard:
         diff = (acc - prev) * 100
         if abs(diff) < 0.01:
             arrow = "·" if self.use_unicode else "="
-            return " " + self._color(arrow, "gray")
+            return " " + self._color(arrow, self._THEME["delta_flat"])
         up = diff > 0
         if up:
             arrow = "▲" if self.use_unicode else "^"
-            color = "bright_green"
+            color = self._THEME["delta_up"]
             sign = "+"
         else:
             arrow = "▼" if self.use_unicode else "v"
-            color = "bright_red"
+            color = self._THEME["delta_down"]
             sign = ""
         return " " + self._color(f"{arrow}{sign}{diff:.2f}", color, bold=True)
 

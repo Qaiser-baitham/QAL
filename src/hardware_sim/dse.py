@@ -201,7 +201,8 @@ def _plot_pareto(df: pd.DataFrame, out_dir: Path) -> None:
     ax.set_ylabel("Estimated Accuracy (%)")
     ax.set_title("Accuracy vs Energy — Pareto Analysis")
     ax.grid(True, linestyle="--", alpha=0.3)
-    ax.legend(fontsize=9, ncol=2)
+    if ax.get_legend_handles_labels()[0]:
+        ax.legend(fontsize=9, ncol=2)
     fig.tight_layout()
     fig.savefig(out_dir / "dse_pareto.png", dpi=200)
     plt.close(fig)
@@ -253,13 +254,15 @@ def _plot_precision_tradeoff(rows: list[dict], out_dir: Path) -> None:
     axes[0].set_ylabel("Estimated Accuracy (%)")
     axes[0].set_title("Accuracy vs Precision")
     axes[0].grid(True, linestyle="--", alpha=0.3)
-    axes[0].legend(fontsize=8)
+    if axes[0].get_legend_handles_labels()[0]:
+        axes[0].legend(fontsize=8)
 
     axes[1].set_xlabel("Weight bits")
     axes[1].set_ylabel("TOPS/W (proxy)")
     axes[1].set_title("Efficiency vs Precision")
     axes[1].grid(True, linestyle="--", alpha=0.3)
-    axes[1].legend(fontsize=8)
+    if axes[1].get_legend_handles_labels()[0]:
+        axes[1].legend(fontsize=8)
 
     fig.savefig(out_dir / "dse_precision_tradeoff.png", dpi=200)
     plt.close(fig)

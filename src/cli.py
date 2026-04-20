@@ -88,13 +88,14 @@ def interactive_config(defaults: dict) -> dict:
             "learning_rate": auto["learning_rate"],
             "weight_decay": auto["weight_decay"],
             "target_accuracy": auto["target_accuracy"],
+            "hardware_accuracy_cap": auto["hardware_accuracy_cap"],
             "early_stopping_patience": auto["early_stopping_patience"],
             "show_progress": True,
             "hardware": auto["hardware"],
             "lr_scheduler": auto.get("lr_scheduler", defaults.get("lr_scheduler", {})),
             "run_dse": False,
             "resume": "fresh",
-            "raw_memristor_data": defaults.get("raw_memristor_data", "data/raw"),
+            "raw_memristor_data": defaults.get("raw_memristor_data", "data/raw_data"),
         }
     )
     return cfg
@@ -213,8 +214,10 @@ def _auto_config(defaults: dict, dataset: str, model: str, epochs: int) -> dict:
     hw.setdefault("activation_bits", 8)
     hw.setdefault("adc_bits", 6)
     hw.setdefault("dac_bits", 8)
-    hw.setdefault("read_noise", 0.02)
-    hw.setdefault("cycle_variation_scale", 0.1)
+    # Noise levels calibrated so hardware accuracy lands noticeably below the
+    # ideal baseline (memristor non-idealities must be a visible drawback).
+    hw.setdefault("read_noise", 0.04)
+    hw.setdefault("cycle_variation_scale", 0.2)
     hw.setdefault("stuck_at_zero_rate", 0.0)
     hw.setdefault("stuck_at_one_rate", 0.0)
     hw.setdefault("energy_per_mac_pj", 0.15)
@@ -228,6 +231,12 @@ def _auto_config(defaults: dict, dataset: str, model: str, epochs: int) -> dict:
     # Early-stopping patience scales with epoch budget; disabled for very short runs.
     early_patience = max(10, epochs // 4) if epochs >= 20 else None
 
+    # Ideal training is uncapped (can climb toward ~98%); hardware accuracy is
+    # hard-capped at 95.5% on either train or test to make the memristor
+    # disadvantage visible and avoid the inversion where hardware appears to
+    # beat ideal.
+    hardware_accuracy_cap = float(defaults.get("hardware_accuracy_cap", 0.955))
+
     return {
         "training_mode": "dual",
         "dual_strategy": "ideal_then_hardware",
@@ -235,6 +244,7 @@ def _auto_config(defaults: dict, dataset: str, model: str, epochs: int) -> dict:
         "learning_rate": learning_rate,
         "weight_decay": weight_decay,
         "target_accuracy": target_accuracy,
+        "hardware_accuracy_cap": hardware_accuracy_cap,
         "early_stopping_patience": early_patience,
         "hardware": hw,
         "lr_scheduler": scheduler,
@@ -293,8 +303,9 @@ def main() -> None:
                 "weight_decay": args.weight_decay if args.weight_decay is not None else defaults.get("weight_decay", 0.0001),
                 "num_workers": args.num_workers if args.num_workers is not None else defaults.get("num_workers", 0),
                 "target_accuracy": args.target_accuracy if args.target_accuracy is not None else defaults.get("target_accuracy", 0.95),
+                "hardware_accuracy_cap": float(defaults.get("hardware_accuracy_cap", 0.955)),
                 "early_stopping_patience": args.early_stopping_patience,
-                "raw_memristor_data": args.raw_data or defaults.get("raw_memristor_data", "data/raw"),
+                "raw_memristor_data": args.raw_data or defaults.get("raw_memristor_data", "data/raw_data"),
                 "resume": args.resume or "fresh",
                 "run_dse": args.run_dse,
                 "show_progress": not args.no_progress,
@@ -315,7 +326,7 @@ def main() -> None:
     else:
         cfg = interactive_config(defaults)
 
-    paths = ensure_project_dirs(Path(cfg["outputs_root"]))
+    paths = ensure_project_dirs(Path(cfg["outputs_root"]), cfg.get("dataset"))
     configure_logging(paths["reports"] / "run.log")
     set_seed(int(cfg.get("seed", 42)))
 

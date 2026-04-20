@@ -14,7 +14,7 @@
     "min_lr": 0.00001
   },
   "data_root": "datasets",
-  "raw_memristor_data": "data/raw",
+  "raw_memristor_data": "data/raw_data",
   "outputs_root": "outputs",
   "hardware": {
     "weight_bits": 8,
